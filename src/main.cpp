@@ -29,31 +29,21 @@ void handleRoot() {
 }
 
 void getNewFiles() {
-  int randNum = random(50);
-  char name[12];
-  for(int i = 0; i < 50; i++)
-  {
-    sprintf(name,"data" "%02d.bin",i);
-    if(i < randNum)
-    {
-      fileName[i] = name;
-    }
-    else
-    {
-      fileName[i] = "";
-    }
-  }
-  currNumFiles = randNum;
-
   String response;
-  for(int i = 0; i < randNum; i++)
+  if(currNumFiles == 0)
   {
-    response += "<li>" + fileName[i];
-    response += "<input type=\"submit\" name=\"download\" value=\"download\"/>";
-    response += "</li>";
+    response = "<li> No files </li>";
   }
- 
- server.send(200, "text/plane", response); //Send ADC value only to client ajax request
+  else
+  {
+    for(int i = 0; i < currNumFiles; i++)
+    {
+      response += "<li>" + fileName[i];
+      response += "<input type=\"submit\" name=\"download\" value=\"download\"/>";
+      response += "</li>";
+    }
+  }
+  server.send(200, "text/plane", response); //Send ADC value only to client ajax request
 }
 
 void sendFile(){
@@ -171,59 +161,53 @@ void setup() {
 
   server.begin();
   Serial.println("Server started");
-  ////Try to connect with master microcontroller
-  // boolean connected = false;
-  // boolean ledState = true;
-  // uint32_t startTime = millis();
-  // while((millis() - startTime < 5000) && !connected) {
-  //   sendCmd(RDY);
-  //   delay(100);
 
-  //   if(Serial2.available() > 0 && Serial2.readStringUntil(EOL).compareTo(ACK) == 0)
-  //   {
-  //     //Other micro acknowledged state
-  //     Serial.println("Recieved something");
-  //     sendCmd(ACK,true);
-  //     if(waitForACK(1000))
-  //     {
-  //       connected = true;
-  //       digitalWrite(LED_BUILTIN,HIGH);
-  //       Serial.println("\nConnected to other microcontroller");
-  //     }
-  //   }
-  //   else {
-  //     if (ledState == LOW) {
-  //       ledState = HIGH;  
-  //     } else {
-  //       ledState = LOW;
-  //     }
-  //     // set the LED with the ledState of the variable:
-  //     digitalWrite(LED_BUILTIN, ledState);
-  //   }
-  // }
+  //Try to connect with master microcontroller
+  boolean connected = false;
+  boolean ledState = true;
+  uint32_t startTime = millis();
+  while((millis() - startTime < 5000) && !connected) {
+    sendCmd(RDY);
+    delay(100);
 
-  // if(!connected)
-  // {
-  //   Serial.println("Not connected");
-  //   digitalWrite(LED_BUILTIN,LOW);
-  // }
+    if(Serial2.available() > 0 && Serial2.readStringUntil(EOL).compareTo(ACK) == 0)
+    {
+      //Other micro acknowledged state
+      Serial.println("Recieved something");
+      sendCmd(ACK,true);
+      if(waitForACK(1000))
+      {
+        connected = true;
+        digitalWrite(LED_BUILTIN,HIGH);
+        Serial.println("\nConnected to other microcontroller");
+      }
+    }
+    else {
+      if (ledState == LOW) {
+        ledState = HIGH;  
+      } else {
+        ledState = LOW;
+      }
+      // set the LED with the ledState of the variable:
+      digitalWrite(LED_BUILTIN, ledState);
+    }
+  }
 
-  // //Serial2.flush(); //Clear all commands incase extra were sent
-  // delay(100);
-  // //Get file names from 
-  // if(connected)
-  // {
-  //   Serial.println("Transfering files names");
-  //   transferFileNames();
-  //   Serial.println(currNumFiles);
-  // }
+  if(!connected)
+  {
+    Serial.println("Not connected");
+    digitalWrite(LED_BUILTIN,LOW);
+  }
 
-  // fileName[0] = "data00.bin";
-  // fileName[1] = "data01.bin";
-  // fileName[2] = "data02.bin";
-  // fileName[3] = "data03.bin";
-  // fileName[4] = "data04.bin";
-  // currNumFiles = 5;
+  //Serial2.flush(); //Clear all commands incase extra were sent
+  //Get file names from 
+  if(connected)
+  {
+    delay(100);
+    Serial.println("Transfering files names");
+    transferFileNames();
+    Serial.println(currNumFiles);
+  }
 }
 
 void loop() {
