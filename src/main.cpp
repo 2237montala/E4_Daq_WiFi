@@ -18,36 +18,50 @@ String header;
 
 //Array to hold file names
 #define MAX_FILES 100
+#define MAX_FILE_SIZE 2000000 //2MB is largest file
 int currNumFiles = 0;
 String fileName[100] = {""};
 #define transferLED 5
 #define transferLEDTwo 18
 
+void getNewFiles();
+
 void handleRoot() {
  String s = MAIN_page; //Read HTML contents
  server.send(200, "text/html", s); //Send web page
+ getNewFiles();
 }
 
 void getNewFiles() {
   String response;
   if(currNumFiles == 0)
   {
-    response = "<li> No files </li>";
+      response += "<option value=\"No_File\"> No Files </option>";
   }
   else
   {
     for(int i = 0; i < currNumFiles; i++)
     {
-      response += "<li>" + fileName[i];
-      response += "<input type=\"submit\" name=\"download\" value=\"download\"/>";
-      response += "</li>";
+      response += "<option value=" + fileName[i] + "\">";
+      response += fileName[i] + "</option>";
     }
   }
   server.send(200, "text/plane", response); //Send ADC value only to client ajax request
 }
 
 void sendFile(){
-  digitalWrite(transferLED,HIGH);
+  String fileName = "";
+  if (server.args() > 0 ) {
+    for ( uint8_t i = 0; i < server.args(); i++ ) {
+      if (server.argName(i) == "files_submit") {
+         Serial.println(server.arg(i));
+         fileName = server.arg(i);
+         continue;
+      }
+    }
+  }
+  //transferFileData();
+  handleRoot();
 }
 
 boolean getCMD(String& incomingCmd,int timeout) {
@@ -132,6 +146,43 @@ void transferFileNames() {
     Serial.println("Nothing connected");
   }
   
+}
+
+void transferFileData(String fileName) {
+  sendCmd(FDATA,true);
+  if(!waitForACK(5000)){
+    Serial.println("No response");
+    return;
+  }
+
+  sendCmd(fileName,true); //Send name of requested file
+  String incomingCmd="";
+  if(getCMD(incomingCmd,1000) && incomingCmd.compareTo(RDY) == 0)
+  {
+    //sender is ready to send file data
+    sendCmd(ACK);
+
+    //Get file size for HTTP header
+    uint32_t fileSize = 0;
+    if(!getCMD(incomingCmd,1000))
+    {
+      Serial.println("File size not recived");
+      return;
+    }
+    fileSize = incomingCmd.toInt();
+    Serial.println((fileSize/1000.0)); //Print file size in KB
+
+    //Send http header
+
+    // while(getCMD(incomingCmd,1000) && incomingCmd.compareTo(END) != 0)
+    // {
+    //   //Keep reading in data until the sends sends the END command
+
+    // }
+
+  }
+
+
 }
 
 void setup() {

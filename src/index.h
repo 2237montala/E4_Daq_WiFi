@@ -15,10 +15,13 @@ const char MAIN_page[] PROGMEM = R"=====(
  
 <h2>SAE Baja Marquette DAQ Server</h2>
 <div>
-    <form action="" method="post">
-        <ul id="fileNames">
-        </ul>
-    </form>
+  <form action="/download" method="POST">
+    <label for="File name">File Name:</label> 
+    file_name: <select name="files_submit" id="country"> 
+      <option id=fileNames </option> 
+    </select>
+    <button> Download </button>
+  </form>
 </div>
 <button type="button" onclick="loadXMLDoc()">Change Content</button>
 <script>
