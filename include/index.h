@@ -16,13 +16,13 @@ const char MAIN_page[] PROGMEM = R"=====(
 <h2>SAE Baja Marquette DAQ Server</h2>
 <div>
   <form action="/download" method="POST">
-    <label for="file_submit">File Name:</label> 
+    <label for="file_submit">Choose file:</label> 
       <select name="files_submit" id="file_chooser"> 
       </select>
     <button> Download </button>
   </form>
 </div>
-<button type="button" onclick="loadXMLDoc()">Change Content</button>
+<button type="button" onclick="loadXMLDoc()">Update Files</button>
 <script>
  
 function loadXMLDoc() {

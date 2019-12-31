@@ -8,7 +8,7 @@
 #include "main.h"
 
 // Replsace with your network credentials
-const char* ssid     = "ESP32-Access-Point";
+const char* ssid     = "MU DAQ Server";
 const char* password = "123456789";
 
 // Set web server port number to 80
@@ -35,6 +35,7 @@ void handleRoot() {
 
 void getNewFiles() {
   String response;
+  transferFileNames();
   if(currNumFiles == 0)
   {
       response += "<option value=\"No_File\"> No Files </option>";
@@ -90,9 +91,10 @@ boolean waitForACK(int timeout) {
   return false;
 }
 
-void sendCmd(String cmd,boolean addEOL=true) {
+void sendCmd(String cmd,boolean addEOL=true,bool printCMD = true) {
   Serial2.print(cmd);
-  Serial.println(cmd);
+  if(printCMD)
+    Serial.println(cmd);
   if(addEOL) {
     Serial2.print(EOL);
   }
@@ -100,43 +102,38 @@ void sendCmd(String cmd,boolean addEOL=true) {
 
 void transferFileNames() {
   String cmd;
-  bool status = getCMD(cmd,1000);
-  digitalWrite(transferLEDTwo,HIGH);
-  if(status)
+
+  sendCmd(FNAME);
+  waitForACK(5000);
+
+  if(getCMD(cmd,1000),cmd.compareTo(RDY)==0)
   {
-    Serial.println("Got command");
-    digitalWrite(transferLEDTwo,LOW); 
-    Serial.println(cmd);
-    if(cmd.compareTo(RDY)==0)
+    Serial.println("RDY recieved");
+    digitalWrite(transferLED,HIGH);
+    sendCmd(ACK);
+    int fileCount=0;
+    if(getCMD(cmd,1000) && cmd.compareTo(FNAME) == 0)
     {
-      Serial.println("RDY recieved");
-      digitalWrite(transferLED,HIGH);
-      sendCmd(ACK);
-      status = getCMD(cmd,1000);
-      int fileCount=0;
-      if(status && cmd.compareTo(FNAME) == 0)
+      //Keep reading until the host stops
+      boolean moreFiles = true;
+    
+      while(moreFiles)
       {
-        //Keep reading until the host stops
-        boolean moreFiles = true;
-      
-        while(moreFiles)
-        {
-          getCMD(cmd,1000);
-          if(cmd.compareTo(END) == 0) {
-            //Host stops transfer
-            Serial.println("END");
-            moreFiles = false;
-          }
-          else
-          {
-            fileName[fileCount] = cmd;
-            fileCount++;
-            Serial.println(cmd);
-            sendCmd(ACK,true);
-          }
+        getCMD(cmd,1000);
+        if(cmd.compareTo(END) == 0) {
+          //Host stops transfer
+          Serial.println("END");
+          moreFiles = false;
         }
-        currNumFiles = fileCount;
+        else
+        {
+          fileName[fileCount] = cmd;
+          fileCount++;
+          Serial.println(cmd);
+          sendCmd(ACK,true);
+        }
       }
+      currNumFiles = fileCount;
     }
   }
   else
@@ -170,13 +167,18 @@ void transferFileData(String fileName) {
     sendCmd(ACK);
 
     //Send http header
+    fileName.replace(".bin",".csv");
     server.sendHeader("Content-Length", incomingCmd);
-    server.send(200, "/file.csv", "");
+    server.setContentLength(incomingCmd.toInt());
+    server.sendHeader("Content-Disposition", "attachment; fileName="+fileName);
+    server.send(200, "text/plain", "");
 
     while(getCMD(incomingCmd,1000) && incomingCmd.compareTo(END) != 0)
     {
       server.sendContent(incomingCmd);
+      sendCmd(ACK,true,false);
     }
+    Serial.println("Transfer Over\n");
 
   }
 
@@ -253,9 +255,9 @@ void setup() {
   if(connected)
   {
     delay(100);
-    Serial.println("Transfering files names");
-    transferFileNames();
-    Serial.println(currNumFiles);
+    // Serial.println("Transfering files names");
+    // //transferFileNames();
+    // Serial.println(currNumFiles);
   }
 }
 
