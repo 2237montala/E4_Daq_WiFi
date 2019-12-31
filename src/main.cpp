@@ -5,6 +5,7 @@
 //#include "ESPAsyncWebServer.h"
 #include "SerialCmds.h"
 #include "index.h"
+#include "main.h"
 
 // Replsace with your network credentials
 const char* ssid     = "ESP32-Access-Point";
@@ -42,8 +43,7 @@ void getNewFiles() {
   {
     for(int i = 0; i < currNumFiles; i++)
     {
-      response += "<option value=" + fileName[i] + "\">";
-      response += fileName[i] + "</option>";
+      response += "<option value=\"" + fileName[i] + "\">" + fileName[i] + "</option>";
     }
   }
   server.send(200, "text/plane", response); //Send ADC value only to client ajax request
@@ -54,14 +54,12 @@ void sendFile(){
   if (server.args() > 0 ) {
     for ( uint8_t i = 0; i < server.args(); i++ ) {
       if (server.argName(i) == "files_submit") {
-         Serial.println(server.arg(i));
          fileName = server.arg(i);
-         continue;
       }
     }
   }
-  //transferFileData();
-  handleRoot();
+  transferFileData(fileName);
+  //handleRoot();
 }
 
 boolean getCMD(String& incomingCmd,int timeout) {
@@ -163,22 +161,22 @@ void transferFileData(String fileName) {
     sendCmd(ACK);
 
     //Get file size for HTTP header
-    uint32_t fileSize = 0;
     if(!getCMD(incomingCmd,1000))
     {
       Serial.println("File size not recived");
       return;
-    }
-    fileSize = incomingCmd.toInt();
-    Serial.println((fileSize/1000.0)); //Print file size in KB
+    };
+    Serial.println((incomingCmd)); //Print file size in bytes
+    sendCmd(ACK);
 
     //Send http header
+    server.sendHeader("Content-Length", incomingCmd);
+    server.send(200, "/file.csv", "");
 
-    // while(getCMD(incomingCmd,1000) && incomingCmd.compareTo(END) != 0)
-    // {
-    //   //Keep reading in data until the sends sends the END command
-
-    // }
+    while(getCMD(incomingCmd,1000) && incomingCmd.compareTo(END) != 0)
+    {
+      server.sendContent(incomingCmd);
+    }
 
   }
 

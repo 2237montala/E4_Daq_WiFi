@@ -16,10 +16,9 @@ const char MAIN_page[] PROGMEM = R"=====(
 <h2>SAE Baja Marquette DAQ Server</h2>
 <div>
   <form action="/download" method="POST">
-    <label for="File name">File Name:</label> 
-    file_name: <select name="files_submit" id="country"> 
-      <option id=fileNames </option> 
-    </select>
+    <label for="file_submit">File Name:</label> 
+      <select name="files_submit" id="file_chooser"> 
+      </select>
     <button> Download </button>
   </form>
 </div>
@@ -30,7 +29,7 @@ function loadXMLDoc() {
   var xhttp = new XMLHttpRequest();
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
-      document.getElementById("fileNames").innerHTML =
+      document.getElementById("file_chooser").innerHTML =
       this.responseText;
     }
   };
