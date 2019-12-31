@@ -22,7 +22,7 @@ String fileName[100] = {""};
 #define transferLED 5
 #define transferLEDTwo 18
 
-void getNewFiles();
+
 
 void handleRoot() {
  String s = MAIN_page; //Read HTML contents
@@ -60,7 +60,7 @@ void sendFile(){
   transferFileData(fileName);
 }
 
-boolean getCMD(String& incomingCmd,int timeout) {
+bool getCMD(String& incomingCmd,int timeout) {
   uint32_t startTime = millis();
   while(millis() - startTime < timeout)
   {
@@ -73,7 +73,7 @@ boolean getCMD(String& incomingCmd,int timeout) {
   return false;
 }
 
-boolean waitForACK(int timeout) {
+bool waitForACK(int timeout) {
   uint32_t startTime = millis();
   while((millis() - startTime < 5000))
   {
