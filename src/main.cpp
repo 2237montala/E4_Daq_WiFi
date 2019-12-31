@@ -1,8 +1,6 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-//#include <AsyncTCP.h>
-//#include "ESPAsyncWebServer.h"
 #include "SerialCmds.h"
 #include "index.h"
 #include "main.h"
@@ -19,7 +17,6 @@ String header;
 
 //Array to hold file names
 #define MAX_FILES 100
-#define MAX_FILE_SIZE 2000000 //2MB is largest file
 int currNumFiles = 0;
 String fileName[100] = {""};
 #define transferLED 5
@@ -35,7 +32,7 @@ void handleRoot() {
 
 void getNewFiles() {
   String response;
-  transferFileNames();
+  transferFileNames(); //Get files names from the host microcontroller
   if(currNumFiles == 0)
   {
       response += "<option value=\"No_File\"> No Files </option>";
@@ -44,10 +41,11 @@ void getNewFiles() {
   {
     for(int i = 0; i < currNumFiles; i++)
     {
+      //value is the value returned when selected
       response += "<option value=\"" + fileName[i] + "\">" + fileName[i] + "</option>";
     }
   }
-  server.send(200, "text/plane", response); //Send ADC value only to client ajax request
+  server.send(200, "text/plane", response); //selection values
 }
 
 void sendFile(){
@@ -60,7 +58,6 @@ void sendFile(){
     }
   }
   transferFileData(fileName);
-  //handleRoot();
 }
 
 boolean getCMD(String& incomingCmd,int timeout) {
@@ -103,7 +100,7 @@ void sendCmd(String cmd,boolean addEOL=true,bool printCMD = true) {
 void transferFileNames() {
   String cmd;
 
-  sendCmd(FNAME);
+  sendCmd(FNAME); //Send string to signify request of file names
   waitForACK(5000);
 
   if(getCMD(cmd,1000),cmd.compareTo(RDY)==0)
@@ -127,6 +124,7 @@ void transferFileNames() {
         }
         else
         {
+          //Add file name to an array to be referenced later
           fileName[fileCount] = cmd;
           fileCount++;
           Serial.println(cmd);
@@ -140,11 +138,10 @@ void transferFileNames() {
   {
     Serial.println("Nothing connected");
   }
-  
 }
 
 void transferFileData(String fileName) {
-  sendCmd(FDATA,true);
+  sendCmd(FDATA,true); //Send command to start data transfer
   if(!waitForACK(5000)){
     Serial.println("No response");
     return;
@@ -168,21 +165,19 @@ void transferFileData(String fileName) {
 
     //Send http header
     fileName.replace(".bin",".csv");
-    server.sendHeader("Content-Length", incomingCmd);
+    server.sendHeader("Content-Length", incomingCmd); //Need to include length of file
     server.setContentLength(incomingCmd.toInt());
-    server.sendHeader("Content-Disposition", "attachment; fileName="+fileName);
+    server.sendHeader("Content-Disposition", "attachment; fileName="+fileName); //Tell website what kind of data it is
     server.send(200, "text/plain", "");
 
+    //Send each line until EOF is reached
     while(getCMD(incomingCmd,1000) && incomingCmd.compareTo(END) != 0)
     {
       server.sendContent(incomingCmd);
       sendCmd(ACK,true,false);
     }
     Serial.println("Transfer Over\n");
-
   }
-
-
 }
 
 void setup() {
@@ -205,7 +200,7 @@ void setup() {
   Serial.print("AP IP address: ");
   Serial.println(IP);
   
-  
+  //Sets what functions are called when the website is a certain pages
   server.on("/",handleRoot);
   server.on("/download",sendFile);
   server.on("/getNewFiles", getNewFiles);
@@ -218,6 +213,7 @@ void setup() {
   boolean ledState = true;
   uint32_t startTime = millis();
   while((millis() - startTime < 5000) && !connected) {
+    //Send RDY command over serial
     sendCmd(RDY);
     delay(100);
 
@@ -254,10 +250,6 @@ void setup() {
   //Get file names from 
   if(connected)
   {
-    delay(100);
-    // Serial.println("Transfering files names");
-    // //transferFileNames();
-    // Serial.println(currNumFiles);
   }
 }
 
