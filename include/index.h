@@ -19,7 +19,8 @@ const char MAIN_page[] PROGMEM = R"=====(
     <label for="file_submit">Choose file:</label> 
       <select name="files_submit" id="file_chooser"> 
       </select>
-    <button> Download </button>
+    <button type="submit"> Download </button>
+    <button type="submit" formaction="/delete"> Delete </button>
   </form>
 </div>
 <button type="button" onclick="loadXMLDoc()">Update Files</button>

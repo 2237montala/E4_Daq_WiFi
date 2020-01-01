@@ -18,9 +18,12 @@ String header;
 //Array to hold file names
 #define MAX_FILES 100
 int currNumFiles = 0;
-String fileName[100] = {""};
+String fileNames[100] = {""};
 #define transferLED 5
 #define transferLEDTwo 18
+String fileNameFormat = "data00.bin";
+const uint8_t BASE_NAME_SIZE = 4-1; //Num of chars before the numbers in file name -1
+const uint8_t NUM_DIGITS = 2; //Num of digits in the data file 
 
 
 
@@ -31,18 +34,19 @@ void handleRoot() {
 }
 
 void getNewFiles() {
-  String response;
   transferFileNames(); //Get files names from the host microcontroller
-  if(currNumFiles == 0)
-  {
+  updateFileSelection();
+}
+
+void updateFileSelection() {
+  String response;
+  if(currNumFiles == 0) {
       response += "<option value=\"No_File\"> No Files </option>";
   }
-  else
-  {
-    for(int i = 0; i < currNumFiles; i++)
-    {
+  else {
+    for(int i = 0; i < currNumFiles; i++) {
       //value is the value returned when selected
-      response += "<option value=\"" + fileName[i] + "\">" + fileName[i] + "</option>";
+      response += "<option value=\"" + fileNames[i] + "\">" + fileNames[i] + "</option>";
     }
   }
   server.send(200, "text/plane", response); //selection values
@@ -125,7 +129,7 @@ void transferFileNames() {
         else
         {
           //Add file name to an array to be referenced later
-          fileName[fileCount] = cmd;
+          fileNames[fileCount] = cmd;
           fileCount++;
           Serial.println(cmd);
           sendCmd(ACK,true);
@@ -180,9 +184,66 @@ void transferFileData(String fileName) {
   }
 }
 
+bool deleteFile(String fileName) {
+  sendCmd(DEL);
+  if(!waitForACK(5000)){
+    Serial.println("No response");
+    return false;
+  }
+
+  sendCmd(fileName,true); //Send name of requested file
+  String incomingCmd="";
+  if(getCMD(incomingCmd,5000) && incomingCmd.compareTo(ERR) == 0)
+  {
+    //File delection failed
+    Serial.println("File not deleted");
+    return false;
+  }
+  else
+  {
+    //File deleted
+    Serial.println("File deleted");
+    return true;
+  }
+}
+
+void handleFileDelete() {
+  //Get file requested
+  String fileName = "";
+  if (server.args() > 0 ) {
+    for ( uint8_t i = 0; i < server.args(); i++ ) {
+      if (server.argName(i) == "files_submit") {
+         fileName = server.arg(i);
+      }
+    }
+  }
+  Serial.println(fileName+"\n");
+
+  
+  //Delete File
+  if(!deleteFile(fileName)) {
+    //Display deletion error
+  }
+  else {
+    //Display confirmation
+  }
+
+  //Fix array of file names to remove deleted file
+  //Get file number
+  uint8_t fileIndex = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS).toInt();
+  if(fileIndex > 0 && fileIndex < currNumFiles)
+  {
+    //Shift all array elements down by 1
+    std::copy(fileNames+fileIndex,fileNames+currNumFiles,fileNames+fileIndex-1);  
+  }
+
+  //Update the selection window
+  updateFileSelection();
+}
+
 void setup() {
   Serial.begin(115200);
-  Serial2.begin(115200);
+  Serial2.begin(250000);
 
   pinMode(LED_BUILTIN,OUTPUT);
   pinMode(transferLED,OUTPUT);
@@ -203,6 +264,7 @@ void setup() {
   //Sets what functions are called when the website is a certain pages
   server.on("/",handleRoot);
   server.on("/download",sendFile);
+  server.on("/delete",handleFileDelete);
   server.on("/getNewFiles", getNewFiles);
 
   server.begin();
