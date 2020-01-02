@@ -164,8 +164,14 @@ void transferFileData(String fileName) {
       Serial.println("File size not recived");
       return;
     };
+
+    //Create array to hold chunks of data
+    uint8_t bufferSize = 20;
+    String dataBuffer[bufferSize] = "";
+
     Serial.println((incomingCmd)); //Print file size in bytes
     sendCmd(ACK);
+
 
     //Send http header
     fileName.replace(".bin",".csv");
@@ -175,10 +181,25 @@ void transferFileData(String fileName) {
     server.send(200, "text/plain", "");
 
     //Send each line until EOF is reached
-    while(getCMD(incomingCmd,1000) && incomingCmd.compareTo(END) != 0)
+    while(getCMD(incomingCmd,1000))
     {
-      server.sendContent(incomingCmd);
-      sendCmd(ACK,true,false);
+      uint8_t cmdCounter = 0;
+      while(cmdCounter < bufferSize) {
+        if(incomingCmd.compareTo(END) != 0) {
+          dataBuffer[cmdCounter] = incomingCmd;
+          cmdCounter++;
+          sendCmd(ACK,true,false);
+        }
+        else {
+          sendCmd(ACK,true,false);
+          break;
+        }
+      }
+
+      //Send data
+      for(int i = 0; i < cmdCounter; i++) {
+        server.sendContent(dataBuffer[i]);
+      }
     }
     Serial.println("Transfer Over\n");
   }
