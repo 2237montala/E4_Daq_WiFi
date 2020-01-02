@@ -30,7 +30,7 @@ const uint8_t NUM_DIGITS = 2; //Num of digits in the data file
 void handleRoot() {
  String s = MAIN_page; //Read HTML contents
  server.send(200, "text/html", s); //Send web page
- getNewFiles();
+ //getNewFiles();
 }
 
 void getNewFiles() {
@@ -113,30 +113,27 @@ void transferFileNames() {
     digitalWrite(transferLED,HIGH);
     sendCmd(ACK);
     int fileCount=0;
-    if(getCMD(cmd,1000) && cmd.compareTo(FNAME) == 0)
+    //Keep reading until the host stops
+    boolean moreFiles = true;
+  
+    while(moreFiles)
     {
-      //Keep reading until the host stops
-      boolean moreFiles = true;
-    
-      while(moreFiles)
-      {
-        getCMD(cmd,1000);
-        if(cmd.compareTo(END) == 0) {
-          //Host stops transfer
-          Serial.println("END");
-          moreFiles = false;
-        }
-        else
-        {
-          //Add file name to an array to be referenced later
-          fileNames[fileCount] = cmd;
-          fileCount++;
-          Serial.println(cmd);
-          sendCmd(ACK,true);
-        }
+      getCMD(cmd,1000);
+      if(cmd.compareTo(END) == 0) {
+        //Host stops transfer
+        Serial.println("END");
+        moreFiles = false;
       }
-      currNumFiles = fileCount;
+      else
+      {
+        //Add file name to an array to be referenced later
+        fileNames[fileCount] = cmd;
+        fileCount++;
+        Serial.println(cmd);
+        sendCmd(ACK,true);
+      }
     }
+    currNumFiles = fileCount;
   }
   else
   {
@@ -238,11 +235,11 @@ void handleFileDelete() {
       }
     }
   }
-  Serial.println(fileName+"\n");
+  Serial.println("\n"+fileName);
 
   
   //Delete File
-  if(!deleteFile(fileName)) {
+  if(deleteFile(fileName)) {
     //Display deletion error
   }
   else {
@@ -252,12 +249,14 @@ void handleFileDelete() {
   //Fix array of file names to remove deleted file
   //Get file number
   uint8_t fileIndex = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS).toInt();
+  Serial.println("File index " + fileIndex);
   if(fileIndex > 0 && fileIndex < currNumFiles)
   {
     //Shift all array elements down by 1
     std::copy(fileNames+fileIndex,fileNames+currNumFiles,fileNames+fileIndex-1);  
+    currNumFiles--;
   }
-
+  
   //Update the selection window
   updateFileSelection();
 }
