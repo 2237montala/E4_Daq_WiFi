@@ -11,7 +11,7 @@ const char MAIN_page[] PROGMEM = R"=====(
 <html>
 <style>
 </style>
-<body>
+<body onload="loadXMLDoc()">
  
 <h2>SAE Baja Marquette DAQ Server</h2>
 <div>
@@ -23,7 +23,11 @@ const char MAIN_page[] PROGMEM = R"=====(
     <button type="submit" formaction="/delete"> Delete </button>
   </form>
 </div>
-<button type="button" onclick="loadXMLDoc()">Update Files</button>
+<button id="getFileBut" type="button" onclick="loadXMLDoc()">Update Files</button>
+<div id="deleteAllDiv">
+  <button id="deleteAllBut" type="button" onclick="deleteAll()"> Delete All </button>
+</div>
+
 <script>
  
 function loadXMLDoc() {
@@ -37,6 +41,21 @@ function loadXMLDoc() {
   xhttp.open("GET", "getNewFiles", true);
   xhttp.send();
 }
+
+function deleteAll() {
+  var xhttp = new XMLHttpRequest();
+  document.getElementById("deleteAllBut").disabled = true;
+
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      document.getElementById("deleteAllDiv").innerHTML =
+      this.responseText;
+    }
+  };
+  xhttp.open("GET", "deleteAllFiles", true);
+  xhttp.send();
+}
+
 </script>
 </body>
 </html>

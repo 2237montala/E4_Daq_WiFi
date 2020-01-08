@@ -22,7 +22,7 @@ String fileNames[100] = {""};
 #define transferLED 5
 #define transferLEDTwo 18
 String fileNameFormat = "data00.bin";
-const uint8_t BASE_NAME_SIZE = 4-1; //Num of chars before the numbers in file name -1
+const uint8_t BASE_NAME_SIZE = 4; //Num of chars before the numbers in file name -1
 const uint8_t NUM_DIGITS = 2; //Num of digits in the data file 
 
 
@@ -248,17 +248,34 @@ void handleFileDelete() {
 
   //Fix array of file names to remove deleted file
   //Get file number
-  uint8_t fileIndex = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS).toInt();
-  Serial.println("File index " + fileIndex);
-  if(fileIndex > 0 && fileIndex < currNumFiles)
-  {
-    //Shift all array elements down by 1
-    std::copy(fileNames+fileIndex,fileNames+currNumFiles,fileNames+fileIndex-1);  
-    currNumFiles--;
-  }
+  // uint8_t fileIndex = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS).toInt();
+  // String temp = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS);
+  // Serial.println("File index " + fileIndex);
+  // Serial.println(temp.toInt());
+  // if(fileIndex > 0 && fileIndex < currNumFiles)
+  // {
+  //   //Shift all array elements down by 1
+  //   std::copy(fileNames+fileIndex,fileNames+currNumFiles,fileNames+fileIndex-1);  
+  //   currNumFiles--;
+  // }
   
   //Update the selection window
-  updateFileSelection();
+  //updateFileSelection();
+  handleRoot();
+}
+
+void handleDeleteAll() {
+  String response = "";
+
+  //Send delete all files
+  for(int i = 0; i < currNumFiles; i++){
+    deleteFile(fileNames[i]);
+    delay(5);
+  }
+  //Enable button again
+  response = "<button id=\"deleteAllBut\" type=\"button\" onclick=\"deleteAll()\"> Delete All </button>";
+
+  server.send(200, "text/plane", response); //selection values
 }
 
 void setup() {
@@ -282,9 +299,10 @@ void setup() {
   Serial.println(IP);
   
   //Sets what functions are called when the website is a certain pages
-  server.on("/",handleRoot);
-  server.on("/download",sendFile);
-  server.on("/delete",handleFileDelete);
+  server.on("/", handleRoot);
+  server.on("/download", sendFile);
+  server.on("/delete", handleFileDelete);
+  server.on("/deleteAllFiles", handleDeleteAll);
   server.on("/getNewFiles", getNewFiles);
 
   server.begin();
