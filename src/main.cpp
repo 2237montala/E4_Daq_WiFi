@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ArduinoJson.h>
 #include "SerialCmds.h"
 #include "index.h"
 #include "main.h"
@@ -200,6 +201,8 @@ void transferFileData(String fileName) {
     }
     Serial.println("Transfer Over\n");
   }
+
+  //Send ajax request to enable button again
 }
 
 bool deleteFile(String fileName) {
@@ -235,7 +238,7 @@ void handleFileDelete() {
       }
     }
   }
-  Serial.println("\n"+fileName);
+  Serial.println(fileName);
 
   
   //Delete File
@@ -261,7 +264,9 @@ void handleFileDelete() {
   
   //Update the selection window
   //updateFileSelection();
-  handleRoot();
+  //handleRoot();
+  delay(2000);
+  server.send(200, "text/plane"); //selection values
 }
 
 void handleDeleteAll() {
@@ -272,6 +277,7 @@ void handleDeleteAll() {
     deleteFile(fileNames[i]);
     delay(5);
   }
+  delay(2000);
   //Enable button again
   response = "<button id=\"deleteAllBut\" type=\"button\" onclick=\"deleteAll()\"> Delete All </button>";
 
