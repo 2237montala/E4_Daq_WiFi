@@ -26,45 +26,6 @@ String fileNameFormat = "data00.bin";
 const uint8_t BASE_NAME_SIZE = 4; //Num of chars before the numbers in file name -1
 const uint8_t NUM_DIGITS = 2; //Num of digits in the data file 
 
-
-
-void handleRoot() {
- String s = MAIN_page; //Read HTML contents
- server.send(200, "text/html", s); //Send web page
- //getNewFiles();
-}
-
-void getNewFiles() {
-  transferFileNames(); //Get files names from the host microcontroller
-  updateFileSelection();
-}
-
-void updateFileSelection() {
-  String response;
-  if(currNumFiles == 0) {
-      response += "<option value=\"No_File\"> No Files </option>";
-  }
-  else {
-    for(int i = 0; i < currNumFiles; i++) {
-      //value is the value returned when selected
-      response += "<option value=\"" + fileNames[i] + "\">" + fileNames[i] + "</option>";
-    }
-  }
-  server.send(200, "text/plane", response); //selection values
-}
-
-void sendFile(){
-  String fileName = "";
-  if (server.args() > 0 ) {
-    for ( uint8_t i = 0; i < server.args(); i++ ) {
-      if (server.argName(i) == "files_submit") {
-         fileName = server.arg(i);
-      }
-    }
-  }
-  transferFileData(fileName);
-}
-
 bool getCMD(String& incomingCmd,int timeout) {
   uint32_t startTime = millis();
   while(millis() - startTime < timeout)
@@ -80,7 +41,7 @@ bool getCMD(String& incomingCmd,int timeout) {
 
 bool waitForACK(int timeout) {
   uint32_t startTime = millis();
-  while((millis() - startTime < 5000))
+  while((millis() - startTime < timeout))
   {
     if(Serial2.available()>0)
     {
@@ -102,14 +63,65 @@ void sendCmd(String cmd,boolean addEOL=true,bool printCMD = true) {
   }
 }
 
-void transferFileNames() {
+void sendStatus(uint8_t statusCode) {
+  switch(statusCode) {
+    case 0:
+      //No errors
+      server.send(200,"text/plain","success"); //Send temp values. not show in site
+      break;
+    case 1:
+      //SD error
+      server.send(500,"text/plain","SD busy"); //Send error code
+      break;
+    case 2:
+      //Serial error
+      server.send(500,"text/plain","UART error"); //Send error code
+      break;
+    case 3:
+      //File error
+      server.send(500,"text/plain","File delete error"); //Send error code
+      break;
+  }
+}
+
+void handleRoot() {
+ String s = MAIN_page; //Read HTML contents
+ server.send(200, "text/html", s); //Send web page
+ //getNewFiles();
+}
+
+void getNewFiles() {
+  if(transferFileNames() == 0) { //Get files names from the host microcontroller
+    updateFileSelection();
+  }
+  else {
+    //Send 500 error
+    server.send(500,"text/plain","SD card is busy"); //Send error code
+  }
+  
+}
+
+void updateFileSelection() {
+  String response;
+  if(currNumFiles == 0) {
+      response += "<option value=\"No_File\"> No Files </option>";
+  }
+  else {
+    for(int i = 0; i < currNumFiles; i++) {
+      //value is the value returned when selected
+      response += "<option value=\"" + fileNames[i] + "\">" + fileNames[i] + "</option>";
+    }
+  }
+  server.send(200, "text/plane", response); //selection values
+}
+
+int transferFileNames() {
   String cmd;
 
   sendCmd(FNAME); //Send string to signify request of file names
-  waitForACK(5000);
+  waitForACK(2000);
 
-  if(getCMD(cmd,1000),cmd.compareTo(RDY)==0)
-  {
+  if(getCMD(cmd,1000),cmd.compareTo(RDY)==0) {
     digitalWrite(transferLED,HIGH);
     sendCmd(ACK,true,false);
     int fileCount=0;
@@ -134,18 +146,31 @@ void transferFileNames() {
       }
     }
     currNumFiles = fileCount;
+    return 0;
   }
-  else
-  {
-    Serial.println("Nothing connected");
+  else {
+    return 1;
   }
 }
 
-void transferFileData(String fileName) {
+void sendFile(){
+  String fileName = "";
+  if (server.args() > 0 ) {
+    for ( uint8_t i = 0; i < server.args(); i++ ) {
+      if (server.argName(i) == "files_submit") {
+         fileName = server.arg(i);
+      }
+    }
+  }
+  transferFileData(fileName);
+  //sendStatus(transferFileData(fileName));
+}
+
+int transferFileData(String fileName) {
   sendCmd(FDATA,true); //Send command to start data transfer
-  if(!waitForACK(5000)){
+  if(!waitForACK(2000)){
     Serial.println("No response");
-    return;
+    return 1;
   }
 
   sendCmd(fileName,true); //Send name of requested file
@@ -159,7 +184,7 @@ void transferFileData(String fileName) {
     if(!getCMD(incomingCmd,1000))
     {
       Serial.println("File size not recived");
-      return;
+      return 2;
     };
 
     //Create array to hold chunks of data
@@ -199,31 +224,31 @@ void transferFileData(String fileName) {
       }
     }
     Serial.println("Transfer Over\n");
+    return 0;
   }
-
-  //Send ajax request to enable button again
+  return 2;
 }
 
-bool deleteFile(String fileName) {
+int deleteFile(String fileName) {
   sendCmd(DEL);
-  if(!waitForACK(5000)){
+  if(!waitForACK(2000)){
     Serial.println("No response");
-    return false;
+    return 1;
   }
 
   sendCmd(fileName,true); //Send name of requested file
   String incomingCmd="";
-  if(getCMD(incomingCmd,5000) && incomingCmd.compareTo(ERR) == 0)
+  if(getCMD(incomingCmd,2000) && incomingCmd.compareTo(ERR) == 0)
   {
     //File delection failed
     Serial.println("File not deleted");
-    return false;
+    return 3;
   }
   else
   {
     //File deleted
     Serial.println("File deleted");
-    return true;
+    return 0;
   }
 }
 
@@ -250,32 +275,26 @@ void handleFileDelete() {
 
   
   //Delete File
-  if(!deleteFile(fileName)) {
-    //Send error if files had a delete problem
-    server.send(500,"text/plain","File delete error"); //Send error code
-    return;
-  }
-
-  delay(1000);
-  server.send(200,"text/plain","deleted"); //selection values
+  int status = deleteFile(fileName);
+  sendStatus(status);
 }
 
 void handleDeleteAll() {
   //Send delete all files
-  for(int i = 0; i < currNumFiles; i++){
-    if(deleteFile(fileNames[i])) {
-      delay(5);
+  uint8_t status = 0;
+  for(int i = 0; i < currNumFiles; i++) {
+    status = deleteFile(fileNames[i]);
+    if(status == 0) {
+      //Delete successfully
+      delay(5); //Give sd card time to finish operation
     }
     else {
-      //Error deleting
-      server.send(500,"text/plain","File delete error"); //Send error code
-      return;
+      //Some error happened. Skip rest of loop
+      break;
     }
   }
-  delay(2000);
 
-  //Enable button again
-  server.send(200, "text/plane", "Done"); //selection values
+  sendStatus(status);
 }
 
 void setup() {

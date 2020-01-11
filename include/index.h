@@ -56,6 +56,11 @@ const char MAIN_page[] PROGMEM = R"=====(
         this.responseText;
         enableButtons();
       }
+      else if(this.readyState === XMLHttpRequest.DONE && this.status == 500) {
+        document.getElementById("file_chooser").innerHTML = "<option value=\"No_File\"> No Files </option>";
+        alert("Internal Error\n".concat(this.responseText));
+        enableButtons();
+      }
     };
     xhttp.open("GET", "getNewFiles", true);
     xhttp.send();
@@ -109,12 +114,8 @@ const char MAIN_page[] PROGMEM = R"=====(
 
   }
 
-  function transferFile() {
-    
+  function transferFile() { 
   }
-
-
-
 </script>
 </body>
 </html>

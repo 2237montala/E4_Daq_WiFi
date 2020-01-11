@@ -10,9 +10,10 @@ bool getCMD(String& incomingCmd,int timeout);
 bool waitForACK(int timeout);
 void sendCmd(String cmd,boolean addEOL,bool printCMD);
 void updateFileSelection();
-void transferFileNames();
-void transferFileData(String fileName);
-bool deleteFile();
+int transferFileNames();
+int transferFileData(String fileName);
+int deleteFile();
 void handleFileDelete();
+void sendStatus(uint8_t statusCode);
 
 #endif
