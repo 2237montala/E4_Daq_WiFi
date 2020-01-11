@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WebServer.h>
-#include <ArduinoJson.h>
+#include "ArduinoJson.h"
 #include "SerialCmds.h"
 #include "index.h"
 #include "main.h"
@@ -14,7 +14,7 @@ const char* password = "123456789";
 WebServer server(80);
 
 // Variable to store the HTTP request
-String header;
+//String header;
 
 //Array to hold file names
 #define MAX_FILES 100
@@ -110,9 +110,8 @@ void transferFileNames() {
 
   if(getCMD(cmd,1000),cmd.compareTo(RDY)==0)
   {
-    Serial.println("RDY recieved");
     digitalWrite(transferLED,HIGH);
-    sendCmd(ACK);
+    sendCmd(ACK,true,false);
     int fileCount=0;
     //Keep reading until the host stops
     boolean moreFiles = true;
@@ -131,7 +130,7 @@ void transferFileNames() {
         fileNames[fileCount] = cmd;
         fileCount++;
         Serial.println(cmd);
-        sendCmd(ACK,true);
+        sendCmd(ACK,true,false);
       }
     }
     currNumFiles = fileCount;
@@ -229,59 +228,54 @@ bool deleteFile(String fileName) {
 }
 
 void handleFileDelete() {
+  //Create a buffer for the JSON object
+  StaticJsonDocument<200> jsonBuff;
+
   //Get file requested
-  String fileName = "";
-  if (server.args() > 0 ) {
-    for ( uint8_t i = 0; i < server.args(); i++ ) {
-      if (server.argName(i) == "files_submit") {
-         fileName = server.arg(i);
+  if(server.args() > 0) {
+    for( uint8_t i = 0; i < server.args(); i++) {
+      DeserializationError error = deserializeJson(jsonBuff, server.arg(i));
+      if(error) {
+        Serial.print(F("deserializeJson() failed: "));
+        Serial.println(error.c_str());
+        server.send(500,"text/plain",error.c_str()); //Send error code
+        return;
       }
+      break;
     }
   }
+  const char* fileName = jsonBuff["files_submit"];
+  Serial.print("File: ");
   Serial.println(fileName);
 
   
   //Delete File
-  if(deleteFile(fileName)) {
-    //Display deletion error
-  }
-  else {
-    //Display confirmation
+  if(!deleteFile(fileName)) {
+    //Send error if files had a delete problem
+    server.send(500,"text/plain","File delete error"); //Send error code
+    return;
   }
 
-  //Fix array of file names to remove deleted file
-  //Get file number
-  // uint8_t fileIndex = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS).toInt();
-  // String temp = fileName.substring(BASE_NAME_SIZE,BASE_NAME_SIZE+NUM_DIGITS);
-  // Serial.println("File index " + fileIndex);
-  // Serial.println(temp.toInt());
-  // if(fileIndex > 0 && fileIndex < currNumFiles)
-  // {
-  //   //Shift all array elements down by 1
-  //   std::copy(fileNames+fileIndex,fileNames+currNumFiles,fileNames+fileIndex-1);  
-  //   currNumFiles--;
-  // }
-  
-  //Update the selection window
-  //updateFileSelection();
-  //handleRoot();
-  delay(2000);
-  server.send(200, "text/plane"); //selection values
+  delay(1000);
+  server.send(200,"text/plain","deleted"); //selection values
 }
 
 void handleDeleteAll() {
-  String response = "";
-
   //Send delete all files
   for(int i = 0; i < currNumFiles; i++){
-    deleteFile(fileNames[i]);
-    delay(5);
+    if(deleteFile(fileNames[i])) {
+      delay(5);
+    }
+    else {
+      //Error deleting
+      server.send(500,"text/plain","File delete error"); //Send error code
+      return;
+    }
   }
   delay(2000);
-  //Enable button again
-  response = "<button id=\"deleteAllBut\" type=\"button\" onclick=\"deleteAll()\"> Delete All </button>";
 
-  server.send(200, "text/plane", response); //selection values
+  //Enable button again
+  server.send(200, "text/plane", "Done"); //selection values
 }
 
 void setup() {

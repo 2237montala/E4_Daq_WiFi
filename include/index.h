@@ -51,7 +51,7 @@ const char MAIN_page[] PROGMEM = R"=====(
     disableButtons();
     var xhttp = new XMLHttpRequest();
     xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
+      if (this.readyState === XMLHttpRequest.DONE && this.status == 200) {
         document.getElementById("file_chooser").innerHTML =
         this.responseText;
         enableButtons();
@@ -59,42 +59,53 @@ const char MAIN_page[] PROGMEM = R"=====(
     };
     xhttp.open("GET", "getNewFiles", true);
     xhttp.send();
-    
   }
 
   function deleteAll() {
-    var xhttp = new XMLHttpRequest();
-    disableButtons();
+    //Delete all files 
+    //Confirm user wants to delete all
+    if(confirm("Are you sure you want to delete all data files?")) {
+      //Only delete if user says yes
+      var xhttp = new XMLHttpRequest();
+      disableButtons();
 
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
-        document.getElementById("deleteAllDiv").innerHTML =
-        this.responseText;
-        enableButtons();
-      }
-    };
-    xhttp.open("GET", "deleteAllFiles", true);
-    xhttp.send();
-    
+      xhttp.onreadystatechange = function() {
+        if (this.readyState === XMLHttpRequest.DONE && this.status == 500) {
+          alert("Internal Error\n".concat(this.responseText));
+          enableButtons();
+        }
+        else if(this.readyState === XMLHttpRequest.DONE && this.status == 200) {
+          refreshFiles();
+        }
+      };
+      xhttp.open("GET", "deleteAllFiles", true);
+      xhttp.send();
+    }
   }
 
   function deleteOneFile() {
     var e = document.getElementById("file_chooser");
     var fileSelected = e.options[e.selectedIndex].value;
 
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/delete", true);
-    xhr.setRequestHeader('Content-Type', 'application/json');
-    xhr.send(JSON.stringify({ files_submit: fileSelected }));
+    if(fileSelected.localeCompare("No File") != 0) {
+      //Only send a request if a file was selected
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/delete", true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      xhr.send(JSON.stringify({files_submit: fileSelected}));
 
-    disableButtons();
-    var xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-      if (this.readyState == 4 && this.status == 200) {
-        enableButtons();
-      }
-    };
-    xhttp.send();
+      disableButtons();
+      xhr.onreadystatechange = function() {
+        if (this.readyState === XMLHttpRequest.DONE && this.status == 500) {
+          alert("Internal Error\n".concat(this.responseText));
+          enableButtons();
+        }
+        else if(this.readyState === XMLHttpRequest.DONE && this.status == 200) {
+          refreshFiles();
+        }
+      };
+    }
+    
 
   }
 
