@@ -188,7 +188,7 @@ int transferFileData(String fileName) {
     };
 
     //Create array to hold chunks of data
-    uint8_t bufferSize = 20;
+    uint8_t bufferSize = 10;
     String dataBuffer[bufferSize] = "";
 
     Serial.println((incomingCmd)); //Print file size in bytes
@@ -203,21 +203,31 @@ int transferFileData(String fileName) {
     server.send(200, "text/plain", "");
 
     //Send each line until EOF is reached
-    while(getCMD(incomingCmd,1000))
-    {
-      uint8_t cmdCounter = 0;
-      while(cmdCounter < bufferSize) {
-        if(incomingCmd.compareTo(END) != 0) {
-          dataBuffer[cmdCounter] = incomingCmd;
-          cmdCounter++;
-          sendCmd(ACK,true,false);
-        }
-        else {
-          sendCmd(ACK,true,false);
-          break;
+    bool isEnd = false;
+    uint8_t cmdCounter = 0;
+    while(!isEnd) {
+      getCMD(incomingCmd,1000);
+
+      if(incomingCmd.compareTo(END) == 0) {
+        //File is done
+        isEnd = true;
+      }
+      else {
+        dataBuffer[cmdCounter] = incomingCmd;
+        cmdCounter++;
+        sendCmd(ACK,true,false);
+
+        if(cmdCounter >= bufferSize) {
+          //Send data
+          for(int i = 0; i < cmdCounter; i++) {
+            server.sendContent(dataBuffer[i]);
+          }
+          cmdCounter=0;
         }
       }
+    }
 
+    if(cmdCounter > 0) {
       //Send data
       for(int i = 0; i < cmdCounter; i++) {
         server.sendContent(dataBuffer[i]);
